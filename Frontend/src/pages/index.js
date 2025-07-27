@@ -1,0 +1,12 @@
+export { default as SignUpPage } from "./SignUpPage";
+export { default as LoginPage } from "./LoginPage";
+export { default as EmailVerificationPage } from "./EmailVerificationPage";
+export { default as TwoFactorAuthPage } from "./TwoFactorAuthPage";
+export { default as DashboardPage } from "./DashboardPage";
+export { default as ForgotPasswordPage } from "./ForgotPasswordPage";
+export { default as ResetPasswordPage } from "./ResetPasswordPage";
+export { default as TransactionPage } from "./Transaction";
+export { default as ProfilePage } from "./ProfilePage";
+export { default as ServicePage } from "./ServicePage";
+export { default as TransactionHistoryPage } from "./TransactionHistoryPage";
+export { default as TransactionVerificationPage } from "./TransactionVerificationPage";
