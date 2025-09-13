@@ -153,6 +153,26 @@ export default function ProfilePage() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading profile...</p>
         </div>
+
+          {/* Freeze/Unfreeze Account Control */}
+          <div style={{ margin: '24px 0', textAlign: 'center' }}>
+            <button
+              onClick={handleFreezeToggle}
+              disabled={freezeLoading}
+              style={{
+                background: accountFrozen ? '#ff4d4f' : '#1890ff',
+                color: '#fff',
+                padding: '10px 24px',
+                borderRadius: '6px',
+                border: 'none',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+              }}
+            >
+              {freezeLoading ? 'Processing...' : accountFrozen ? 'Unfreeze Account' : 'Freeze Account'}
+            </button>
+          </div>
       </div>
     );
   }
