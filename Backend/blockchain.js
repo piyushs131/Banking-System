@@ -1,5 +1,6 @@
 // backend/blockchain.js
 import Web3 from 'web3';
+import { logSecurityEvent } from './utils/securityLogger.js';
 
 const contractABI = [ 
     {
@@ -110,6 +111,12 @@ try {
 // Function to check if blockchain is available
 export const isBlockchainAvailable = () => {
   return web3 !== null && contract !== null;
+};
+
+// Log blockchain transaction for audit trail
+export const logBlockchainTransaction = async ({ sender, recipient, amount, txHash }) => {
+  const event = `Blockchain TX | Sender: ${sender}, Recipient: ${recipient}, Amount: ${amount}, TxHash: ${txHash}`;
+  logSecurityEvent(event);
 };
 
 export { web3, contract };

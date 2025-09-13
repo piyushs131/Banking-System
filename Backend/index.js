@@ -7,8 +7,6 @@ import transactionRoutes from "./routes/transaction.route.js";
 import profileRoutes from "./routes/profile.route.js";
 import serviceRequestRoutes from "./routes/serviceRequest.route.js";
 import connectDB from "./db/connectDB.js";
-
-// Security middlewares
 import securityHeaders from "./middleware/securityHeaders.js";
 const rateLimiter = require("./middleware/rateLimiter.js");
 
@@ -26,8 +24,6 @@ app.use(
     credentials: true,
   })
 );
-
-// Apply security headers
 app.use(securityHeaders);
 
 // Apply rate limiting to all requests
