@@ -19,6 +19,7 @@ import {
 } from "../nodemailer/emails.js";
 import { updateContextProfile } from "../utils/updateContextProfile.js";
 import { generateAccountDetails } from "../utils/generateAccountDetails.js";
+import { logSecurityEvent } from "../utils/securityLogger.js";
 
 export const signup = async (req, res) => {
   const { email, password, name, context, captcha } = req.body;
@@ -94,7 +95,7 @@ export const signup = async (req, res) => {
     await user.save();
 
     // jwt
-    generateTokenAndSetCookie(res, user._id);
+      const { email, password, context, captcha, mfaCode } = req.body;
 
     await sendVerificationEmail(user.email, verificationToken);
 
@@ -108,25 +109,52 @@ export const signup = async (req, res) => {
     });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
+          logSecurityEvent(`Failed login for non-existent user: ${email}`);
   }
 };
 
 export const verifyEmail = async (req, res) => {
   const { verificationCode } = req.body;
+        // Check if account is locked
+        if (user.accountLockedUntil && user.accountLockedUntil > Date.now()) {
+          logSecurityEvent(`Locked account login attempt: ${email}`);
+          return res.status(403).json({ success: false, message: "Account locked. Try again later." });
+        }
   try {
     const user = await User.findOne({
       verificationToken: verificationCode,
+          user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+          logSecurityEvent(`Failed login attempt for user: ${email}`);
+          // Lock account after 5 failed attempts for 30 minutes
+          if (user.failedLoginAttempts >= 5) {
+            user.accountLockedUntil = new Date(Date.now() + 30 * 60 * 1000);
+            logSecurityEvent(`Account locked due to failed attempts: ${email}`);
+          }
+          await user.save();
       verificationTokenExpiresAt: { $gt: Date.now() },
     });
 
     if (!user) {
       return res.status(400).json({
+        // Reset failed attempts on successful login
+        user.failedLoginAttempts = 0;
+        user.accountLockedUntil = null;
         success: false,
         message: "Invalid or expired verification code",
       });
     }
     user.isVerified = true;
     user.verificationToken = undefined;
+        // MFA check
+        if (user.mfaEnabled) {
+          if (!mfaCode || mfaCode !== user.mfaTempCode || user.mfaTempCodeExpiresAt < Date.now()) {
+            logSecurityEvent(`Failed MFA for user: ${email}`);
+            return res.status(401).json({ success: false, message: "MFA required or invalid code" });
+          }
+          // Clear temp code after use
+          user.mfaTempCode = null;
+          user.mfaTempCodeExpiresAt = null;
+        }
     user.verificationTokenExpiresAt = undefined;
     await user.save();
 
@@ -183,6 +211,16 @@ export const resendVerificationCode = async (req, res) => {
 
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
+          // Log login activity
+          user.loginHistory = user.loginHistory || [];
+          user.loginHistory.push({
+            date: new Date(),
+            ip: req.ip,
+            userAgent: req.headers['user-agent'],
+            location: await getLocationName(req.ip),
+            successful: true,
+          });
+          logSecurityEvent(`Successful login for user: ${email}`);
   try {
     if (!email) {
       res.status(400).json({

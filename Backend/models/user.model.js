@@ -28,6 +28,33 @@ const userSchema = new mongoose.Schema(
     verificationToken: String,
     verificationTokenExpiresAt: Date,
 
+    // MFA fields
+    mfaEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    mfaSecret: String,
+    mfaTempCode: String,
+    mfaTempCodeExpiresAt: Date,
+
+    // Security fields
+    failedLoginAttempts: {
+      type: Number,
+      default: 0,
+    },
+    accountLockedUntil: Date,
+
+    // Login activity
+    loginHistory: [
+      {
+        date: Date,
+        ip: String,
+        userAgent: String,
+        location: String,
+        successful: Boolean,
+      }
+    ],
+
     // Transaction verification fields
     transactionVerificationToken: String,
     transactionVerificationExpiresAt: Date,
