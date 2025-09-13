@@ -67,6 +67,8 @@ const SignUpPage = () => {
                 setName(e.target.value);
               }}
             />
+            <PasswordStrengthMeter password={password} />
+            
             <Input
               icon={Mail}
               type="email"

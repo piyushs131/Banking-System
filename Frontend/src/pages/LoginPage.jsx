@@ -10,11 +10,13 @@ import useContextData from "../hooks/useContextData";
 import { useNavigate } from "react-router-dom";
 const LoginPage = () => {
   const [captcha, setCaptcha] = useState("");
+import SecurityAlert from '../components/SecurityAlert';
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const { context, handleKeyDown } = useContextData();
   const { login, error, isLoading, require2FA } = useAuthStore();
+  const [alert, setAlert] = useState(null);
 
   const Navigate = useNavigate();
 

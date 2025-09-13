@@ -35,6 +35,32 @@ const AdminDashboard = () => {
     <div style={{ maxWidth: 700, margin: '40px auto' }}>
       <h2>Admin Dashboard: Flagged Accounts</h2>
       {error && <SecurityAlert type="danger" message={error} />}
+        <button
+          style={{ marginBottom: 16, background: '#1890ff', color: '#fff', border: 'none', borderRadius: 4, padding: '8px 20px', fontWeight: 'bold', cursor: 'pointer' }}
+          onClick={() => {
+            // Export flagged accounts as CSV
+            const csvRows = [
+              ['Email', 'Reason', 'Last Activity', 'Status'],
+              ...filterAccounts(flaggedAccounts, search).map(acc => [
+                acc.email,
+                acc.reason,
+                new Date(acc.lastActivity).toLocaleString(),
+                acc.status
+              ])
+            ];
+            const csvContent = csvRows.map(row => row.map(String).map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'flagged_accounts.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          }}
+        >
+          Export Flagged Accounts (CSV)
+        </button>
         <input
           type="text"
           placeholder="Search by email, reason, status..."
