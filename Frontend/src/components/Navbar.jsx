@@ -1,86 +1,157 @@
-import React from "react";
-import { motion } from "framer-motion";
-import { LogOut, LayoutDashboard } from "lucide-react";
+import { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
-import { toast } from "react-hot-toast";
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import {
+  LayoutDashboard, DollarSign, History, Briefcase, UserCircle,
+  LogOut, Menu, X, Shield, ShieldCheck, ChevronDown,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 const Navbar = () => {
-  const { logout } = useAuthStore();
-  const navigate = useNavigate();
+  const { user, logout } = useAuthStore();
+  const location = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  if (!user) return null;
+
+  const links = [
+    { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    { to: "/transactions", icon: DollarSign, label: "Transfer" },
+    { to: "/transaction-history", icon: History, label: "History" },
+    { to: "/service", icon: Briefcase, label: "Services" },
+    { to: "/profile", icon: UserCircle, label: "Profile" },
+  ];
+
+  const securityScore = (() => {
+    let score = 0, total = 0;
+    total += 20; if (user?.mfaEnabled) score += 20;
+    total += 20; if (user?.isVerified) score += 20;
+    total += 15; if (user?.trustedDevices?.length > 0) score += 15;
+    total += 15; if (user?.trustedIPs?.length > 0) score += 15;
+    total += 15; if ((user?.riskScore || 0) < 5) score += 15;
+    total += 15; if ((user?.failedLoginAttempts || 0) === 0) score += 15;
+    return total > 0 ? Math.round((score / total) * 100) : 0;
+  })();
+
+  const threatColor =
+    securityScore >= 80 ? "var(--bank-risk-low)" :
+      securityScore >= 50 ? "var(--bank-risk-medium)" :
+        "var(--bank-risk-high)";
+
+  const isActive = (path) => location.pathname === path;
+
   const handleLogout = () => {
-    try {
-      logout();
-      toast.success("Logged out successfully!");
-    } catch (error) {
-      console.error("Logout failed:", error);
-      toast.error("Logout failed. Please try again.");
-    }
+    logout();
   };
 
   return (
-    <header className="w-full py-2 px-8 flex items-center justify-between backdrop-blur-md shadow-md fixed top-0 left-0 z-50 border-b border-gray-200">
-      {/* Left side - Bank Branding */}
-      <button onClick={() => navigate("/")} className="flex items-center space-x-3">
-        <div className="bg-blue-600 text-white rounded-lg px-4 py-2 font-bold text-lg tracking-wide shadow-lg cursor-pointer">
-          CANARA BANK
-        </div>
-        {/* <div className="hidden md:block">
-          <span className="text-gray-700 font-medium text-sm">Fraud Detection Portal</span>
-        </div> */}
-      </button>
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-[var(--bank-bg-elevated)]/95 backdrop-blur-md border-b border-[var(--bank-border)]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo */}
+          <Link to="/dashboard" className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-[var(--bank-primary)] flex items-center justify-center">
+              <Shield className="w-5 h-5 text-white" />
+            </div>
+            <div className="hidden sm:block">
+              <span className="text-lg font-bold text-[var(--bank-text)]">SecureBank</span>
+              <span className="block text-[10px] text-[var(--bank-text-muted)] -mt-1 tracking-wide">CYBERSECURITY BANKING</span>
+            </div>
+          </Link>
 
-      {/* Right side - Logout Button */}
-      <nav className="flex items-center">
-        <div className=" flex flex-col sm:flex-row sm:justify-center gap-3 items-center">
-          <Link
-            to="/transactions"
-            className="inline-flex items-center bg-blue-700 text-white-700 font-semibold px-6 py-3 rounded-full hover:bg-blue-100 transition"
-          >
-            Make a Transaction <ArrowRight className="ml-2" />
-          </Link>
-          <Link
-            to="/service"
-            className="px-4 py-2  rounded-xl font-medium shadow bg-blue-700 hover:bg-blue-200 transition-all border border-blue-200"
-          >
-            Service
-          </Link>
-          <Link
-            to="/transaction-history"
-            className="px-4 py-2  bg-blue-700 rounded-xl font-medium shadow hover:bg-purple-200 transition-all border border-purple-200"
-          >
-            Transaction History
-          </Link>
+          {/* Desktop nav */}
+          <div className="hidden lg:flex items-center gap-1">
+            {links.map(({ to, icon: Icon, label }) => (
+              <Link
+                key={to}
+                to={to}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive(to)
+                    ? "bg-[var(--bank-primary)] text-white"
+                    : "text-[var(--bank-text-muted)] hover:bg-[var(--bank-bg)] hover:text-[var(--bank-text)]"
+                  }`}
+              >
+                <Icon className="w-4 h-4" />
+                {label}
+              </Link>
+            ))}
+          </div>
+
+          {/* Right side */}
+          <div className="flex items-center gap-3">
+            {/* Security indicator */}
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--bank-bg)] border border-[var(--bank-border)]" title={`Security Score: ${securityScore}%`}>
+              <div className="relative">
+                <ShieldCheck className="w-4 h-4" style={{ color: threatColor }} />
+                <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full glow-green" style={{ background: threatColor }} />
+              </div>
+              <span className="text-xs font-semibold" style={{ color: threatColor }}>{securityScore}%</span>
+            </div>
+
+            {/* User */}
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bank-bg)] border border-[var(--bank-border)]">
+              <div className="w-6 h-6 rounded-full bg-[var(--bank-primary)] flex items-center justify-center">
+                <span className="text-white text-xs font-bold">{user?.name?.[0]?.toUpperCase()}</span>
+              </div>
+              <span className="text-sm font-medium text-[var(--bank-text)] max-w-[100px] truncate">{user?.name}</span>
+            </div>
+
+            {/* Logout */}
+            <button
+              onClick={handleLogout}
+              className="p-2 rounded-lg text-[var(--bank-text-muted)] hover:bg-[var(--bank-error-bg)] hover:text-[var(--bank-error)] transition-colors"
+              title="Logout"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+
+            {/* Mobile menu toggle */}
+            <button
+              onClick={() => setMobileOpen(!mobileOpen)}
+              className="lg:hidden p-2 rounded-lg text-[var(--bank-text-muted)] hover:bg-[var(--bank-bg)]"
+            >
+              {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
         </div>
-        <motion.button
-          whileHover={{
-            scale: 1.08,
-            boxShadow: "0 4px 24px rgba(59,130,246,0.15)",
-          }}
-          whileTap={{ scale: 0.96 }}
-          onClick={() => navigate("/dashboard")}
-          className="px-4 py-2 mx-2 w-fit bg-blue-700 rounded-xl flex items-center gap-2 font-medium shadow hover:bg-purple-200 transition-all border border-purple-200 cursor-pointer"
-          title="Dashboard"
-        >
-          <LayoutDashboard className="w-5 h-5" />
-          <span className="hidden sm:inline">Dashboard</span>
-        </motion.button>
-        <motion.button
-          whileHover={{
-            scale: 1.05,
-            boxShadow: "0 4px 24px rgba(239,68,68,0.15)",
-          }}
-          whileTap={{ scale: 0.95 }}
-          onClick={handleLogout}
-          className="flex cursor-pointer items-center gap-2 px-5 py-2 bg-blue-700 border border-red-200 rounded-full shadow-md font-semibold transition-all duration-200 hover:bg-red-50 hover:text-red-700 hover:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2"
-          title="Logout"
-        >
-          <LogOut className="w-5 h-5" />
-          <span className="hidden sm:inline">Logout</span>
-        </motion.button>
-      </nav>
-    </header>
+      </div>
+
+      {/* Mobile nav */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="lg:hidden border-t border-[var(--bank-border)] bg-[var(--bank-bg-elevated)]"
+          >
+            <div className="p-4 space-y-1">
+              {/* Mobile security badge */}
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-[var(--bank-bg)] border border-[var(--bank-border)] mb-3">
+                <ShieldCheck className="w-5 h-5" style={{ color: threatColor }} />
+                <div>
+                  <p className="text-sm font-medium text-[var(--bank-text)]">{user?.name}</p>
+                  <p className="text-xs text-[var(--bank-text-muted)]">Security: {securityScore}%</p>
+                </div>
+              </div>
+              {links.map(({ to, icon: Icon, label }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  onClick={() => setMobileOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive(to)
+                      ? "bg-[var(--bank-primary)] text-white"
+                      : "text-[var(--bank-text-muted)] hover:bg-[var(--bank-bg)] hover:text-[var(--bank-text)]"
+                    }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  {label}
+                </Link>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </nav>
   );
 };
 

@@ -23,6 +23,8 @@ import { logSecurityEvent } from "../utils/securityLogger.js";
 
 export const signup = async (req, res) => {
   const { email, password, name, context, captcha } = req.body;
+  const ctx = context || {};
+  const loc = ctx.location || { latitude: 0, longitude: 0 };
   try {
     if (!email || !password || !name) {
       throw new Error("All fields are required!");
@@ -31,10 +33,10 @@ export const signup = async (req, res) => {
     if (!captcha) {
       return res
         .status(400)
-        .json({ success: false, message: "Captcha is required!" });
+        .json({ success: false, message: "Please complete the captcha" });
     }
 
-    const userAlreadyExists = await User.findOne({ email });
+    const userAlreadyExists = await User.findOne({ email: email.trim().toLowerCase() });
 
     if (userAlreadyExists) {
       return res
@@ -44,7 +46,7 @@ export const signup = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const verificationToken = generateVerificationCode();
-    
+
     // Generate unique account details
     const accountDetails = generateAccountDetails();
 
@@ -55,106 +57,82 @@ export const signup = async (req, res) => {
     const user = new User({
       accountNumber: accountDetails.accountNumber,
       ifscCode: accountDetails.ifscCode,
-      email,
+      email: email.trim().toLowerCase(),
       password: hashedPassword,
-      name,
+      name: name.trim(),
+      isVerified: true, // Auto-verify for easy signup - user can login immediately
       verificationToken,
-      verificationTokenExpiresAt: Date.now() + 60 * 1000, // 1 minute
-      trustedIPs: [context.ip], // Initialize with the current IP
-      trustedDevices: [context.device], // Initialize with the current device
-      locations: [
-        {
-          lat: context.location.latitude,
-          lon: context.location.longitude,
-        },
-      ], // Initialize with the current location
+      verificationTokenExpiresAt: Date.now() + 60 * 1000,
+      trustedIPs: [ctx.ip || req.ip || "unknown"],
+      trustedDevices: [ctx.device || "unknown"],
+      locations: [{ lat: loc.latitude, lon: loc.longitude }],
       contextLogs: [
         {
-          ip: context.ip,
-          device: context.device,
+          ip: ctx.ip || req.ip || "unknown",
+          device: ctx.device || "unknown",
           location: {
-            lat: context.location.latitude,
-            lon: context.location.longitude,
-            locationName:
-              (await getLocationName(
-                context.location.latitude,
-                context.location.longitude
-              )) || "Unknown", // Use provided location name or default to "Unknown"
+            lat: loc.latitude,
+            lon: loc.longitude,
+            locationName: "Unknown",
           },
           timestamp: new Date(),
-          riskScore: 0, // Initial risk score for this context
+          riskScore: 0,
         },
       ],
       behavioralProfile: {
-        typingSpeed: context.typingSpeed,
-        loginHours: context.loginHours,
-      }, // Initialize with the current behavioral profile
+        typingSpeed: ctx.typingSpeed,
+        loginHours: ctx.loginHours || [],
+      },
       riskScore: 0, // Initialize risk score
     });
 
     await user.save();
 
-    // jwt
-      const { email, password, context, captcha, mfaCode } = req.body;
+    // Send verification email in background (optional - user is already verified)
+    sendVerificationEmail(user.email, verificationToken).catch((err) => {
+      console.error("Verification email failed (user still created):", err.message);
+    });
 
-    await sendVerificationEmail(user.email, verificationToken);
+    // Auto-login: set cookie so user is immediately logged in
+    generateTokenAndSetCookie(res, user._id);
 
     res.status(201).json({
       success: true,
-      message: "User Created Successfully",
+      message: "Account created! You are now logged in.",
       user: {
         ...user._doc,
         password: undefined,
+        trustedIPs: undefined,
+        trustedDevices: undefined,
+        locations: undefined,
+        behavioralProfile: undefined,
+        riskScore: undefined,
       },
     });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-          logSecurityEvent(`Failed login for non-existent user: ${email}`);
+    console.error("Signup error:", error);
+    let msg = error?.message || String(error) || "Sign up failed";
+    if (error?.code === 11000) msg = "User Already Exists!";
+    res.status(400).json({ success: false, message: msg });
   }
 };
 
 export const verifyEmail = async (req, res) => {
   const { verificationCode } = req.body;
-        // Check if account is locked
-        if (user.accountLockedUntil && user.accountLockedUntil > Date.now()) {
-          logSecurityEvent(`Locked account login attempt: ${email}`);
-          return res.status(403).json({ success: false, message: "Account locked. Try again later." });
-        }
   try {
     const user = await User.findOne({
       verificationToken: verificationCode,
-          user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
-          logSecurityEvent(`Failed login attempt for user: ${email}`);
-          // Lock account after 5 failed attempts for 30 minutes
-          if (user.failedLoginAttempts >= 5) {
-            user.accountLockedUntil = new Date(Date.now() + 30 * 60 * 1000);
-            logSecurityEvent(`Account locked due to failed attempts: ${email}`);
-          }
-          await user.save();
       verificationTokenExpiresAt: { $gt: Date.now() },
     });
 
     if (!user) {
       return res.status(400).json({
-        // Reset failed attempts on successful login
-        user.failedLoginAttempts = 0;
-        user.accountLockedUntil = null;
         success: false,
         message: "Invalid or expired verification code",
       });
     }
     user.isVerified = true;
     user.verificationToken = undefined;
-        // MFA check
-        if (user.mfaEnabled) {
-          if (!mfaCode || mfaCode !== user.mfaTempCode || user.mfaTempCodeExpiresAt < Date.now()) {
-            logSecurityEvent(`Failed MFA for user: ${email}`);
-            return res.status(401).json({ success: false, message: "MFA required or invalid code" });
-          }
-          // Clear temp code after use
-          user.mfaTempCode = null;
-          user.mfaTempCodeExpiresAt = null;
-        }
     user.verificationTokenExpiresAt = undefined;
     await user.save();
 
@@ -211,19 +189,9 @@ export const resendVerificationCode = async (req, res) => {
 
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
-          // Log login activity
-          user.loginHistory = user.loginHistory || [];
-          user.loginHistory.push({
-            date: new Date(),
-            ip: req.ip,
-            userAgent: req.headers['user-agent'],
-            location: await getLocationName(req.ip),
-            successful: true,
-          });
-          logSecurityEvent(`Successful login for user: ${email}`);
   try {
     if (!email) {
-      res.status(400).json({
+      return res.status(400).json({
         success: false,
         message: "Email is required!",
       });
@@ -298,99 +266,79 @@ export const resetPassword = async (req, res) => {
 };
 
 export const login = async (req, res) => {
-  const { email, password, context, captcha } = req.body;
+  const { email, password, captcha } = req.body;
   try {
     if (!email || !password) {
-      throw new Error("All fields are required!");
+      return res.status(400).json({ success: false, message: "Email and password are required" });
     }
 
     if (!captcha) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Captcha is required!" });
+      return res.status(400).json({ success: false, message: "Please complete the captcha" });
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email.trim().toLowerCase() });
     if (!user) {
-      return res
-        .status(400)
-        .json({ success: false, message: "User not found!" });
+      return res.status(400).json({ success: false, message: "Invalid email or password" });
     }
+
+    const loginIP = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip || "unknown";
+    const loginUA = req.headers["user-agent"] || "unknown";
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Wrong Password!" });
-    }
-
-    // Inside login route:
-    const isHuman = await verifyCaptcha(captcha);
-    console.log("Captcha verification result:", isHuman);
-    if (!isHuman) return res.status(403).json({ error: "Bot detected" });
-
-    try {
-      const isDeviceTrusted = user.trustedDevices?.includes(context.device);
-      if (!isDeviceTrusted) {
-        const resetToken = crypto.randomBytes(20).toString("hex");
-        const resetTokenExpiresAt = Date.now() + 30 * 60 * 1000; // 30 minutes
-
-        user.resetPasswordToken = resetToken;
-        user.resetPasswordExpiresAt = resetTokenExpiresAt;
-        await user.save();
-        await sendNewDeviceLoginAlert(
-          user.email,
-          user.name,
-          context,
-          `${process.env.CLIENT_URL}/reset-password/${resetToken}`
-        );
-      }
-
-      const risk = evaluateContext(context, user);
-
-      // Risk-based authentication logic
-      if (risk >= 10) {
-        // Block login and send warning email for high risk
-        await sendSuspiciousActivityWarning(
-          user.email,
-          user.name,
-          context,
-          risk
-        );
-        return res.status(403).json({
-          success: false,
-          message:
-            "Suspicious activity detected, login blocked for your security. Check your email for details.",
-        });
-      } else if (risk >= 5) {
-        // Require 2FA for medium risk
-        const verificationToken = generateVerificationCode();
-        user.verificationToken = verificationToken;
-        user.verificationTokenExpiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
-        await user.save();
-
-        await sendTwoFactorAuthEmail(
-          user.email,
-          user.name,
-          verificationToken,
-          context
-        );
-
-        return res.status(200).json({
-          success: true,
-          message: "Two-factor authentication required",
-          require2FA: true,
-          email: user.email,
-        });
-      }
-
-      user.lastLogin = new Date();
-      await updateContextProfile(user, context, risk);
+      // Record failed login attempt
+      if (!user.loginHistory) user.loginHistory = [];
+      user.loginHistory.push({
+        date: new Date(),
+        ip: loginIP,
+        userAgent: loginUA,
+        successful: false,
+      });
+      user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
       await user.save();
-    } catch (error) {
-      console.error("Error evaluating context:", error);
-      return res.status(500).json({ success: false, message: "Server error" });
+      return res.status(400).json({ success: false, message: "Invalid email or password" });
     }
+
+    const isHuman = await verifyCaptcha(captcha);
+    if (!isHuman) {
+      return res.status(400).json({ success: false, message: "Captcha verification failed. Please try again." });
+    }
+
+    // Record successful login attempt
+    const loginEntry = {
+      date: new Date(),
+      ip: loginIP,
+      userAgent: loginUA,
+      successful: true,
+    };
+    if (!user.loginHistory) user.loginHistory = [];
+    user.loginHistory.push(loginEntry);
+    user.lastLogin = new Date();
+    user.failedLoginAttempts = 0; // Reset on successful login
+
+    // 2FA check
+    if (user.mfaEnabled) {
+      const verificationCode = generateVerificationCode();
+      user.verificationToken = verificationCode;
+      user.verificationTokenExpiresAt = Date.now() + 5 * 60 * 1000; // 5 min
+      await user.save();
+
+      // Send 2FA email
+      await sendTwoFactorAuthEmail(user.email, user.name, verificationCode, {
+        device: req.headers["user-agent"] || "Unknown",
+        location: { latitude: 0, longitude: 0 },
+        time: new Date().toLocaleString(),
+      });
+
+      return res.status(200).json({
+        success: false,
+        requires2FA: true,
+        email: user.email,
+        message: "A verification code has been sent to your email. Please enter it to complete login.",
+      });
+    }
+
+    await user.save();
 
     generateTokenAndSetCookie(res, user._id);
 
@@ -408,8 +356,8 @@ export const login = async (req, res) => {
       },
     });
   } catch (error) {
-    console.log("Error during login:", error);
-    res.status(400).json({ success: false, message: error.message });
+    console.error("Login error:", error);
+    res.status(400).json({ success: false, message: error?.message || "Login failed" });
   }
 };
 
@@ -420,16 +368,17 @@ export const logout = async (req, res) => {
 
 export const checkAuth = async (req, res) => {
   try {
+    if (!req.userId) {
+      return res.status(401).json({ success: false, message: "Not authenticated" });
+    }
     const user = await User.findById(req.userId).select("-password");
     if (!user) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+      return res.status(401).json({ success: false, message: "User not found" });
     }
     res.status(200).json({ success: true, user });
   } catch (error) {
     console.error("Error checking authentication:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    return res.status(401).json({ success: false, message: "Session expired" });
   }
 };
 
@@ -458,7 +407,7 @@ export const deleteAccount = async (req, res) => {
 export const getMyAccountDetails = async (req, res) => {
   try {
     const user = await User.findById(req.userId).select('-password');
-    
+
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -485,7 +434,7 @@ export const getMyAccountDetails = async (req, res) => {
 export const findUserByAccountNumber = async (req, res) => {
   try {
     const { accountNumber } = req.params;
-    
+
     if (!accountNumber) {
       return res.status(400).json({
         success: false,
@@ -494,7 +443,7 @@ export const findUserByAccountNumber = async (req, res) => {
     }
 
     const user = await User.findOne({ accountNumber }).select('-password');
-    
+
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -563,5 +512,82 @@ export const verifyTwoFactorAuth = async (req, res) => {
   } catch (error) {
     console.log("Error verifying two-factor authentication:", error);
     res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// ─── Security Management Endpoints ───
+
+// Toggle 2FA
+export const toggleMFA = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    user.mfaEnabled = !user.mfaEnabled;
+    await user.save();
+    res.status(200).json({ success: true, mfaEnabled: user.mfaEnabled, message: user.mfaEnabled ? "2FA enabled" : "2FA disabled" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Trust current device
+export const trustDevice = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    const device = req.headers["user-agent"] || "unknown";
+    if (!user.trustedDevices.includes(device)) {
+      user.trustedDevices.push(device);
+      await user.save();
+    }
+    res.status(200).json({ success: true, trustedDevices: user.trustedDevices, message: "Device trusted" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Trust current IP
+export const trustIP = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket?.remoteAddress || req.ip || "unknown";
+    if (!user.trustedIPs.includes(ip)) {
+      user.trustedIPs.push(ip);
+      await user.save();
+    }
+    res.status(200).json({ success: true, trustedIPs: user.trustedIPs, message: "IP trusted" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Remove trusted device
+export const removeTrustedDevice = async (req, res) => {
+  try {
+    const { device } = req.body;
+    if (!device) return res.status(400).json({ success: false, message: "Device string is required" });
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    user.trustedDevices = user.trustedDevices.filter(d => d !== device);
+    await user.save();
+    res.status(200).json({ success: true, trustedDevices: user.trustedDevices, message: "Device removed" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Remove trusted IP
+export const removeTrustedIP = async (req, res) => {
+  try {
+    const { ip } = req.body;
+    if (!ip) return res.status(400).json({ success: false, message: "IP is required" });
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    user.trustedIPs = user.trustedIPs.filter(i => i !== ip);
+    await user.save();
+    res.status(200).json({ success: true, trustedIPs: user.trustedIPs, message: "IP removed" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };

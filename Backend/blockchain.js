@@ -1,4 +1,6 @@
 // backend/blockchain.js
+import dotenv from 'dotenv';
+dotenv.config();
 import Web3 from 'web3';
 import { logSecurityEvent } from './utils/securityLogger.js';
 
@@ -79,7 +81,7 @@ const contractABI = [
     }
   ];
 
-const contractAddress = '0xc683EE9b201Bcd553A1c0415822f5ed5c9149655'; // your deployed address
+const contractAddress = process.env.CONTRACT_ADDRESS || '0xc683EE9b201Bcd553A1c0415822f5ed5c9149655';
 
 // Initialize Web3 with error handling
 let web3 = null;

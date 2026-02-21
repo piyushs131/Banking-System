@@ -22,19 +22,6 @@ export const getMyProfile = async (req, res) => {
 };
 
 export const updateMyProfile = async (req, res) => {
-// Get recent login activity
-export const getLoginActivity = async (req, res) => {
-  try {
-    const userId = req.user._id;
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
-    }
-    res.status(200).json({ success: true, loginHistory: user.loginHistory || [] });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
   try {
     let profile = await Profile.findOne({ user: req.userId });
     if (!profile) {
@@ -52,5 +39,18 @@ export const getLoginActivity = async (req, res) => {
     res.json({ message: 'Profile updated successfully' });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+export const getLoginActivity = async (req, res) => {
+  try {
+    const userId = req.userId || req.user?._id;
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    res.status(200).json({ success: true, loginHistory: user.loginHistory || [] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };

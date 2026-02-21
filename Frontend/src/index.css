@@ -1,1 +1,534 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+/* ============================================
+   BANK DESIGN SYSTEM – Cybersecurity Edition
+   Premium · Polished · Professional
+   ============================================ */
+:root {
+  --bank-primary: #0c2340;
+  --bank-primary-hover: #0f2d52;
+  --bank-primary-light: #1e3a5f;
+  --bank-primary-muted: #2d4a6f;
+  --bank-accent: #b8860b;
+  --bank-accent-hover: #c9a227;
+  --bank-accent-light: #e8c547;
+  --bank-accent-muted: #f5e6c8;
+  --bank-bg: #f5f7fa;
+  --bank-bg-elevated: #ffffff;
+  --bank-border: #e2e8f0;
+  --bank-border-strong: #cbd5e1;
+  --bank-text: #0f172a;
+  --bank-text-muted: #475569;
+  --bank-text-subtle: #94a3b8;
+  --bank-success: #059669;
+  --bank-success-bg: #ecfdf5;
+  --bank-error: #dc2626;
+  --bank-error-bg: #fef2f2;
+  --bank-warning: #d97706;
+  --bank-warning-bg: #fffbeb;
+  --bank-risk-low: #059669;
+  --bank-risk-low-bg: #ecfdf5;
+  --bank-risk-medium: #d97706;
+  --bank-risk-medium-bg: #fffbeb;
+  --bank-risk-high: #dc2626;
+  --bank-risk-high-bg: #fef2f2;
+  --bank-risk-critical: #7c2d12;
+  --bank-risk-critical-bg: #fde2e2;
+  --bank-cyber-green: #00d4aa;
+  --bank-cyber-green-bg: #d0f9ef;
+  --bank-cyber-blue: #0ea5e9;
+  --bank-cyber-blue-bg: #e0f2fe;
+  --bank-cyber-purple: #8b5cf6;
+  --bank-cyber-purple-bg: #ede9fe;
+  --bank-chain-on: #059669;
+  --bank-chain-on-bg: #ecfdf5;
+  --bank-chain-off: #64748b;
+  --bank-chain-off-bg: #f1f5f9;
+  --bank-shadow-sm: 0 1px 2px rgba(0, 0, 0, .04);
+  --bank-shadow: 0 1px 3px rgba(0, 0, 0, .06), 0 1px 2px rgba(0, 0, 0, .04);
+  --bank-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, .07), 0 2px 4px -2px rgba(0, 0, 0, .05);
+  --bank-shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, .08), 0 4px 6px -4px rgba(0, 0, 0, .04);
+  --bank-shadow-xl: 0 20px 40px -8px rgba(0, 0, 0, .1), 0 8px 16px -6px rgba(0, 0, 0, .06);
+  --bank-radius: 14px;
+  --bank-radius-sm: 10px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bank-bg);
+  color: var(--bank-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.6;
+}
+
+/* ── CARDS ── */
+.bank-card {
+  background: var(--bank-bg-elevated);
+  border: 1px solid var(--bank-border);
+  border-radius: var(--bank-radius);
+  box-shadow: var(--bank-shadow);
+  transition: box-shadow .2s, transform .2s;
+}
+
+.bank-card:hover {
+  box-shadow: var(--bank-shadow-md);
+}
+
+.bank-card-elevated {
+  background: var(--bank-bg-elevated);
+  border: 1px solid var(--bank-border);
+  border-radius: var(--bank-radius);
+  box-shadow: var(--bank-shadow-md);
+  transition: box-shadow .25s, transform .25s;
+}
+
+.bank-card-elevated:hover {
+  box-shadow: var(--bank-shadow-lg);
+}
+
+.bank-card-cyber {
+  background: var(--bank-bg-elevated);
+  border: 1px solid var(--bank-border);
+  border-radius: var(--bank-radius);
+  box-shadow: var(--bank-shadow-lg);
+  position: relative;
+  overflow: hidden;
+}
+
+.bank-card-cyber::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--bank-cyber-green), var(--bank-cyber-blue), var(--bank-cyber-purple));
+}
+
+.bank-card-gradient {
+  background: linear-gradient(135deg, #0c2340 0%, #1e3a5f 60%, #2d4a6f 100%);
+  border: none;
+  border-radius: var(--bank-radius);
+  box-shadow: var(--bank-shadow-lg);
+  color: #fff;
+}
+
+/* ── BUTTONS ── */
+.btn-bank-primary {
+  background: var(--bank-primary);
+  color: #fff;
+  font-weight: 600;
+  padding: .625rem 1.25rem;
+  border-radius: var(--bank-radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: background .2s, box-shadow .2s, transform .15s;
+}
+
+.btn-bank-primary:hover:not(:disabled) {
+  background: var(--bank-primary-hover);
+  box-shadow: var(--bank-shadow-md);
+  transform: translateY(-1px);
+}
+
+.btn-bank-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-bank-primary:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.btn-bank-accent {
+  background: linear-gradient(135deg, var(--bank-primary) 0%, var(--bank-primary-light) 100%);
+  color: #fff;
+  font-weight: 600;
+  padding: .75rem 1.5rem;
+  border-radius: var(--bank-radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: filter .2s, box-shadow .2s, transform .15s;
+}
+
+.btn-bank-accent:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: var(--bank-shadow-md);
+  transform: translateY(-1px);
+}
+
+.btn-bank-accent:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-bank-security {
+  background: linear-gradient(135deg, var(--bank-cyber-green), var(--bank-cyber-blue));
+  color: #fff;
+  font-weight: 600;
+  padding: .625rem 1.25rem;
+  border-radius: var(--bank-radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: filter .2s, box-shadow .2s, transform .15s;
+}
+
+.btn-bank-security:hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow: 0 4px 16px rgba(0, 212, 170, .3);
+  transform: translateY(-1px);
+}
+
+.btn-bank-outline {
+  background: transparent;
+  border: 1.5px solid var(--bank-border);
+  color: var(--bank-text);
+  font-weight: 500;
+  padding: .5rem 1rem;
+  border-radius: var(--bank-radius-sm);
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+
+.btn-bank-outline:hover {
+  border-color: var(--bank-primary);
+  background: var(--bank-bg);
+}
+
+/* ── INPUTS ── */
+.bank-input {
+  width: 100%;
+  padding: .65rem 1rem;
+  border: 1.5px solid var(--bank-border);
+  border-radius: var(--bank-radius-sm);
+  background: var(--bank-bg-elevated);
+  color: var(--bank-text);
+  font-size: .9375rem;
+  font-family: inherit;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+.bank-input::placeholder {
+  color: var(--bank-text-subtle);
+}
+
+.bank-input:focus {
+  outline: none;
+  border-color: var(--bank-primary);
+  box-shadow: 0 0 0 3px rgba(12, 35, 64, .12);
+}
+
+/* ── PAGE BACKGROUNDS ── */
+.bank-page-auth {
+  min-height: 100vh;
+  background: linear-gradient(160deg, #f0f4f8 0%, #dbe4f0 50%, #c7d2e0 100%);
+}
+
+.bank-page-app {
+  min-height: 100vh;
+  background: var(--bank-bg);
+}
+
+/* ── TABS ── */
+.bank-tab {
+  padding: .5rem 1rem;
+  font-size: .875rem;
+  font-weight: 500;
+  color: var(--bank-text-muted);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  transition: color .2s, border-color .2s;
+}
+
+.bank-tab:hover {
+  color: var(--bank-text);
+}
+
+.bank-tab-active {
+  color: var(--bank-primary);
+  border-bottom-color: var(--bank-primary);
+  font-weight: 600;
+}
+
+/* ── BADGES ── */
+.security-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: .7rem;
+  font-weight: 600;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+
+.security-badge-success {
+  background: var(--bank-success-bg);
+  color: var(--bank-success);
+}
+
+.security-badge-warning {
+  background: var(--bank-warning-bg);
+  color: var(--bank-warning);
+}
+
+.security-badge-error {
+  background: var(--bank-error-bg);
+  color: var(--bank-error);
+}
+
+.security-badge-info {
+  background: var(--bank-cyber-blue-bg);
+  color: var(--bank-cyber-blue);
+}
+
+.security-badge-chain-on {
+  background: var(--bank-chain-on-bg);
+  color: var(--bank-chain-on);
+}
+
+.security-badge-chain-off {
+  background: var(--bank-chain-off-bg);
+  color: var(--bank-chain-off);
+}
+
+/* ── MODAL ── */
+.bank-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(12, 35, 64, .45);
+  backdrop-filter: blur(6px);
+}
+
+.bank-modal {
+  background: var(--bank-bg-elevated);
+  border: 1px solid var(--bank-border);
+  border-radius: 16px;
+  box-shadow: var(--bank-shadow-xl);
+  max-height: 90vh;
+  overflow-y: auto;
+  width: 100%;
+}
+
+.bank-modal::-webkit-scrollbar {
+  width: 5px;
+}
+
+.bank-modal::-webkit-scrollbar-track {
+  background: var(--bank-bg);
+}
+
+.bank-modal::-webkit-scrollbar-thumb {
+  background: var(--bank-border-strong);
+  border-radius: 3px;
+}
+
+/* ── RISK METER ── */
+.risk-meter {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bank-border);
+  overflow: hidden;
+}
+
+.risk-meter-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width .6s ease-out;
+}
+
+/* ── STAT CARD ── */
+.bank-stat-card {
+  background: var(--bank-bg-elevated);
+  border: 1px solid var(--bank-border);
+  border-radius: var(--bank-radius);
+  padding: 1rem 1.25rem;
+  transition: transform .2s, box-shadow .2s;
+}
+
+.bank-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--bank-shadow-lg);
+}
+
+/* ── ANIMATIONS ── */
+@keyframes security-pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: .5;
+  }
+}
+
+.security-pulse {
+  animation: security-pulse 2s ease-in-out infinite;
+}
+
+@keyframes glow-green {
+
+  0%,
+  100% {
+    box-shadow: 0 0 4px rgba(5, 150, 105, .3);
+  }
+
+  50% {
+    box-shadow: 0 0 14px rgba(5, 150, 105, .6);
+  }
+}
+
+.glow-green {
+  animation: glow-green 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer-bg {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .08), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2.5s infinite;
+}
+
+/* ── SECURITY SCORE RING ── */
+.security-score-ring {
+  transform: rotate(-90deg);
+  transform-origin: center;
+}
+
+/* ── THREAT INDICATOR ── */
+.threat-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: .75rem;
+  font-weight: 600;
+}
+
+/* ── TABLE ── */
+.bank-table-row {
+  transition: background-color .15s;
+}
+
+.bank-table-row:hover {
+  background-color: var(--bank-bg);
+}
+
+.bank-table-row-clickable {
+  cursor: pointer;
+}
+
+.bank-table-row-clickable:hover {
+  background-color: #f0f5ff;
+}
+
+/* ── SERVICE CARD ── */
+.service-card {
+  background: var(--bank-bg-elevated);
+  border: 1.5px solid var(--bank-border);
+  border-radius: var(--bank-radius);
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all .25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.service-card:hover {
+  border-color: var(--bank-primary);
+  box-shadow: var(--bank-shadow-lg);
+  transform: translateY(-3px);
+}
+
+.service-card.service-card-active {
+  border-color: var(--bank-primary);
+  box-shadow: 0 0 0 3px rgba(12, 35, 64, .12), var(--bank-shadow-lg);
+}
+
+.service-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--bank-primary);
+  transform: scaleX(0);
+  transition: transform .3s;
+}
+
+.service-card:hover::after,
+.service-card.service-card-active::after {
+  transform: scaleX(1);
+}
+
+/* ── TOGGLE SWITCH ── */
+.bank-toggle {
+  position: relative;
+  width: 48px;
+  height: 26px;
+  border-radius: 13px;
+  cursor: pointer;
+  transition: background .25s;
+}
+
+.bank-toggle-off {
+  background: var(--bank-border-strong);
+}
+
+.bank-toggle-on {
+  background: var(--bank-primary);
+}
+
+.bank-toggle-dot {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .15);
+  transition: transform .25s;
+}
+
+.bank-toggle-on .bank-toggle-dot {
+  transform: translateX(22px);
+}
+
+/* ── UTILITY ── */
+.text-gradient {
+  background: linear-gradient(135deg, var(--bank-primary), var(--bank-cyber-blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

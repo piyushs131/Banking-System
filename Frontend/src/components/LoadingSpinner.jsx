@@ -2,13 +2,18 @@ import { motion } from "framer-motion";
 
 const LoadingSpinner = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-800 to-violet-900 flex items-center justify-center relative overflow-hidden">
-      {/* Simple Loading Spinner */}
-      <motion.div
-        className="w-16 h-16 border-4 border-t-4 border-t-blue-500 border-blue-200 rounded-full"
-        animate={{ rotate: 360 }}
-        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-      />
+    <div
+      className="min-h-screen flex items-center justify-center"
+      style={{ background: "var(--bank-bg)" }}
+    >
+      <div className="text-center">
+        <motion.div
+          className="w-14 h-14 rounded-full border-4 border-[var(--bank-border)] border-t-[var(--bank-primary)]"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
+        />
+        <p className="mt-4 text-sm font-medium text-[var(--bank-text-muted)]">Loading...</p>
+      </div>
     </div>
   );
 };
