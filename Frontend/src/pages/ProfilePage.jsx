@@ -1,15 +1,25 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-
-import { User, Mail, Phone, MapPin, CreditCard, Shield, Calendar, Save, Edit, ArrowLeft, Home, CheckCircle, Copy } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import {
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  CreditCard,
+  Shield,
+  Calendar,
+  Save,
+  Edit,
+  Home,
+  CheckCircle,
+  Copy,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 import { toast } from "react-hot-toast";
 import axios from "axios";
 
-const API_BASE = import.meta.env.MODE === "development"
-  ? "http://localhost:5000/api/profile"
-  : "/api/profile";
+const API_BASE = "/api/profile";
 
 const INIT_PROFILE = {
   fullName: "",
@@ -22,8 +32,6 @@ const INIT_PROFILE = {
   phone: "",
   countryCode: "+91",
   address: "",
-  // Removed: accountNumber: "",
-  // Removed: ifscCode: "",
   branch: "",
   accountType: "",
   currentBalance: "",
@@ -31,11 +39,11 @@ const INIT_PROFILE = {
   maritalStatus: "",
   nationality: "",
   occupation: "",
-  gender: "", // Added gender field
+  gender: "",
 };
 
 export default function ProfilePage() {
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const [profile, setProfile] = useState(INIT_PROFILE);
   const [exists, setExists] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -46,14 +54,13 @@ export default function ProfilePage() {
   useEffect(() => {
     const getProfile = async () => {
       if (!user?.email) {
-        toast.error("Please login to access your profile");
+        toast.error("Please sign in to access your profile.");
         navigate("/login");
         return;
       }
       try {
         setLoading(true);
         const res = await axios.get(`${API_BASE}/me`, { withCredentials: true });
-        // Split phone into countryCode and phone number
         const phone = res.data.phone || "";
         let countryCode = "+91";
         let phoneNumber = phone;
@@ -62,22 +69,14 @@ export default function ProfilePage() {
           countryCode = match[1];
           phoneNumber = match[2];
         }
-        setProfile({
-          ...res.data,
-          countryCode,
-          phone: phoneNumber,
-        });
+        setProfile({ ...res.data, countryCode, phone: phoneNumber });
         setExists(true);
-      } catch (error) {
-        if (error.response?.status === 404) {
-          setProfile(prev => ({
-            ...prev,
-            email: user.email,
-            fullName: user.name || ""
-          }));
+      } catch (err) {
+        if (err.response?.status === 404) {
+          setProfile((prev) => ({ ...prev, email: user.email, fullName: user.name || "" }));
           setExists(false);
         } else {
-          toast.error("Failed to load profile");
+          toast.error("Failed to load profile.");
         }
       } finally {
         setLoading(false);
@@ -86,11 +85,9 @@ export default function ProfilePage() {
     getProfile();
   }, [user, navigate]);
 
-  const handleChange = (e) => {
-    setProfile({ ...profile, [e.target.name]: e.target.value });
-  };
+  const handleChange = (e) => setProfile({ ...profile, [e.target.name]: e.target.value });
 
-  const handleSave = async (e) => {
+  const saveProfile = async (e) => {
     e.preventDefault();
     setSaving(true);
     try {
@@ -98,128 +95,71 @@ export default function ProfilePage() {
       await axios.put(`${API_BASE}/me`, profileToSend, { withCredentials: true });
       setExists(true);
       setIsEditing(false);
-      toast.success("Profile created");
+      toast.success(exists ? "Profile updated." : "Profile saved.");
     } catch (err) {
-      toast.error(err.response?.data?.message || "Error saving profile");
+      toast.error(err.response?.data?.message || "Error saving profile.");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleUpdate = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const profileToSend = { ...profile, phone: profile.countryCode + profile.phone };
-      await axios.put(`${API_BASE}/me`, profileToSend, { withCredentials: true });
-      setIsEditing(false);
-      toast.success("Profile updated");
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Error updating profile");
-    } finally {
-      setSaving(false);
-    }
-  };
-
+  const requiredFields = ["fullName", "email", "phone", "aadhaarNumber", "dob", "address", "gender"];
   const calculateCompletion = () => {
     let filled = 0;
-    const required = ["fullName", "email", "phone", "accountNumber", "ifscCode", "aadhaarNumber", "dob", "address", "gender"];
-    required.forEach(field => {
-      if (profile[field] && profile[field].trim() !== "") filled++;
+    requiredFields.forEach((field) => {
+      if (profile[field] && String(profile[field]).trim() !== "") filled++;
     });
-    return Math.round((filled / required.length) * 100);
+    return Math.round((filled / requiredFields.length) * 100);
   };
 
-  // Helper to get color based on completion
   const getCompletionColor = (percent) => {
-    if (percent <= 40) return "bg-red-500";
-    if (percent <= 70) return "bg-yellow-400";
-    return "bg-green-500";
+    if (percent <= 40) return "bg-[var(--bank-error)]";
+    if (percent <= 70) return "bg-[var(--bank-warning)]";
+    return "bg-[var(--bank-success)]";
   };
 
-  const handleLogout = () => {
-    logout();
-    toast.success("Logged out");
-    navigate("/login");
-  };
-
-  const maskPan = (pan) => pan ? pan.replace(/.(?=.{4})/g, '*') : '';
-  const maskAadhaar = (aadhaar) => aadhaar ? aadhaar.replace(/.(?=.{4})/g, '*') : '';
+  const maskPan = (pan) => (pan ? pan.replace(/.(?=.{4})/g, "*") : "");
+  const maskAadhaar = (aadhaar) => (aadhaar ? aadhaar.replace(/.(?=.{4})/g, "*") : "");
 
   if (loading) {
     return (
-      <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading profile...</p>
+          <div
+            className="w-12 h-12 rounded-full border-4 border-[var(--bank-border)] border-t-[var(--bank-primary)] animate-spin mx-auto mb-4"
+          />
+          <p className="text-[var(--bank-text-muted)]">Loading profile…</p>
         </div>
-
-          {/* Freeze/Unfreeze Account Control */}
-          <div style={{ margin: '24px 0', textAlign: 'center' }}>
-            <button
-              onClick={handleFreezeToggle}
-              disabled={freezeLoading}
-              style={{
-                background: accountFrozen ? '#ff4d4f' : '#1890ff',
-                color: '#fff',
-                padding: '10px 24px',
-                borderRadius: '6px',
-                border: 'none',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
-              }}
-            >
-              {freezeLoading ? 'Processing...' : accountFrozen ? 'Unfreeze Account' : 'Freeze Account'}
-            </button>
-          </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 relative overflow-hidden">
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-indigo-400/20 to-pink-600/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-blue-300/10 to-purple-300/10 rounded-full blur-3xl animate-pulse delay-500"></div>
-      </div>
-
-      {/* Header */}
-
-
-
-      <div className="relative z-10 max-w-4xl mt-10 mx-auto py-8 px-6">
+    <div className="pt-20 pb-12 px-4 sm:px-6">
+      <div className="max-w-3xl mx-auto">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="bg-white bg-opacity-10 backdrop-blur-md rounded-xl border border-blue-500 shadow-2xl"
+          className="bank-card-elevated overflow-hidden"
         >
-          {/* Profile Summary */}
-          <div className="p-8 border-b border-blue-800">
-            <div className="flex items-center gap-6">
-              <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-violet-600 rounded-full flex items-center justify-center">
+          <div className="p-6 sm:p-8 border-b border-[var(--bank-border)]">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+              <div className="w-20 h-20 rounded-xl bg-[var(--bank-primary)] flex items-center justify-center shrink-0">
                 <User className="w-10 h-10 text-white" />
               </div>
-              <div className="flex-1 ">
-                <h1 className="text-3xl font-bold text-black">
-                  {profile.fullName || "Complete Your Profile"}
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl font-bold text-[var(--bank-text)]">
+                  {profile.fullName || "Complete your profile"}
                 </h1>
-                <p className="text-black">{profile.email || user?.email}</p>
-                <p className="text-sm text-blue-300">
-                  {exists ? "Profile loaded" : "New profile"}
-                </p>
+                <p className="text-[var(--bank-text-muted)]">{profile.email || user?.email}</p>
                 <div className="mt-4">
-                  <div className="flex justify-between text-sm text-black mb-1">
-                    <span>Profile Completion</span>
+                  <div className="flex justify-between text-sm text-[var(--bank-text-muted)] mb-1">
+                    <span>Profile completion</span>
                     <span>{calculateCompletion()}%</span>
                   </div>
-                  <div className="w-full bg-blue-900 border border-blue-700 rounded-full h-2 overflow-hidden">
+                  <div className="w-full h-2 bg-[var(--bank-border)] rounded-full overflow-hidden">
                     <motion.div
                       className={`h-2 ${getCompletionColor(calculateCompletion())}`}
-                      style={{ width: `${calculateCompletion()}%` }}
                       initial={{ width: 0 }}
                       animate={{ width: `${calculateCompletion()}%` }}
                       transition={{ duration: 0.5 }}
@@ -229,62 +169,131 @@ export default function ProfilePage() {
               </div>
               {!isEditing && (
                 <button
+                  type="button"
                   onClick={() => setIsEditing(true)}
-                  className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
-
+                  className="btn-bank-primary rounded-lg flex items-center gap-2 shrink-0"
                 >
-                  <Edit className="inline-block mr-1 w-4 h-4" />
+                  <Edit className="w-4 h-4" />
                   Edit
                 </button>
               )}
             </div>
           </div>
 
-          {/* Profile Form */}
-          <form className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6" onSubmit={exists ? handleUpdate : handleSave}>
-            <FormField label="Full Name" name="fullName" icon={User} value={profile.fullName} onChange={handleChange} disabled={!isEditing} />
-            <FormField type="email" label="Email" name="email" icon={Mail} value={profile.email} onChange={handleChange} disabled={true} />
-            <FormField label="Phone" name="phone" icon={Phone} value={profile.phone} onChange={handleChange} disabled={!isEditing} countryCode={profile.countryCode} onCountryCodeChange={e => setProfile({ ...profile, countryCode: e.target.value })} />
-            <FormField type="date" label="DOB" name="dob" icon={Calendar} value={profile.dob} onChange={handleChange} disabled={!isEditing} />
-            <FormField label="Gender" name="gender" icon={CheckCircle} value={profile.gender} onChange={handleChange} disabled={!isEditing} />
-            <FormField label="Address" name="address" icon={MapPin} value={profile.address} onChange={handleChange} disabled={!isEditing} />
-            {/* Removed Account Number and IFSC Code fields */}
-            <FormField
-              label="PAN Number"
-              name="pan"
-              icon={CreditCard}
-              value={maskPan(profile.pan)}
-              onChange={handleChange}
-              disabled={!isEditing}
-              copyValue={profile.pan}
-            />
-            <FormField
-              label="Aadhaar Number"
-              name="aadhaarNumber"
-              icon={Shield}
-              value={maskAadhaar(profile.aadhaarNumber)}
-              onChange={handleChange}
-              disabled={!isEditing}
-              copyValue={profile.aadhaarNumber}
-            />
-            <FormField label="Marital Status" name="maritalStatus" icon={CheckCircle} value={profile.maritalStatus} onChange={handleChange} disabled={!isEditing} />
-            <FormField label="Nationality" name="nationality" icon={Home} value={profile.nationality} onChange={handleChange} disabled={!isEditing} />
-            <FormField label="Occupation / Employment Type" name="occupation" icon={Edit} value={profile.occupation} onChange={handleChange} disabled={!isEditing} />
-            {/* Buttons */}
-            <div className="col-span-full mt-8 flex gap-4 ">
-              {isEditing && (
-                <button type="button" onClick={() => setIsEditing(false)} className="px-6 cursor-pointer py-3 border border-blue-500 bg-blue-700  rounded hover:bg-blue-700">
+          <form onSubmit={saveProfile} className="p-6 sm:p-8">
+            <div className="grid sm:grid-cols-2 gap-6">
+              <FormField
+                label="Full name"
+                name="fullName"
+                icon={User}
+                value={profile.fullName}
+                onChange={handleChange}
+                disabled={!isEditing}
+              />
+              <FormField
+                type="email"
+                label="Email"
+                name="email"
+                icon={Mail}
+                value={profile.email}
+                onChange={handleChange}
+                disabled
+              />
+              <FormField
+                label="Phone"
+                name="phone"
+                icon={Phone}
+                value={profile.phone}
+                onChange={handleChange}
+                disabled={!isEditing}
+                countryCode={profile.countryCode}
+                onCountryCodeChange={(e) => setProfile({ ...profile, countryCode: e.target.value })}
+              />
+              <FormField
+                type="date"
+                label="Date of birth"
+                name="dob"
+                icon={Calendar}
+                value={profile.dob}
+                onChange={handleChange}
+                disabled={!isEditing}
+              />
+              <FormField
+                label="Gender"
+                name="gender"
+                icon={CheckCircle}
+                value={profile.gender}
+                onChange={handleChange}
+                disabled={!isEditing}
+                asSelect
+                options={["", "Male", "Female", "Other", "Prefer not to say"]}
+              />
+              <div className="sm:col-span-2">
+                <FormField
+                  label="Address"
+                  name="address"
+                  icon={MapPin}
+                  value={profile.address}
+                  onChange={handleChange}
+                  disabled={!isEditing}
+                />
+              </div>
+              <FormField
+                label="PAN"
+                name="pan"
+                icon={CreditCard}
+                value={maskPan(profile.pan)}
+                onChange={handleChange}
+                disabled={!isEditing}
+                copyValue={profile.pan}
+              />
+              <FormField
+                label="Aadhaar"
+                name="aadhaarNumber"
+                icon={Shield}
+                value={maskAadhaar(profile.aadhaarNumber)}
+                onChange={handleChange}
+                disabled={!isEditing}
+                copyValue={profile.aadhaarNumber}
+              />
+              <FormField
+                label="Marital status"
+                name="maritalStatus"
+                icon={CheckCircle}
+                value={profile.maritalStatus}
+                onChange={handleChange}
+                disabled={!isEditing}
+              />
+              <FormField
+                label="Nationality"
+                name="nationality"
+                icon={Home}
+                value={profile.nationality}
+                onChange={handleChange}
+                disabled={!isEditing}
+              />
+              <FormField
+                label="Occupation"
+                name="occupation"
+                icon={Edit}
+                value={profile.occupation}
+                onChange={handleChange}
+                disabled={!isEditing}
+              />
+            </div>
 
+            <div className="mt-8 flex flex-wrap gap-3">
+              {isEditing && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  className="px-6 py-3 rounded-lg border border-[var(--bank-border)] text-[var(--bank-text)] font-medium hover:bg-[var(--bank-bg)]"
+                >
                   Cancel
                 </button>
               )}
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-6 py-3 bg-gradient-to-r from-blue-500 to-violet-500 cursor-pointer hover:from-blue-600 hover:to-violet-600 rounded"
-
-              >
-                {saving ? "Saving..." : exists ? "Update Profile" : "Save Profile"}
+              <button type="submit" disabled={saving} className="btn-bank-accent rounded-lg px-6 py-3 disabled:opacity-60">
+                {saving ? "Saving…" : exists ? "Update profile" : "Save profile"}
               </button>
             </div>
           </form>
@@ -294,66 +303,77 @@ export default function ProfilePage() {
   );
 }
 
-function FormField({ label, name, value, icon: Icon, onChange, disabled = false, type = "text", copyValue, countryCode, onCountryCodeChange }) {
+function FormField({
+  label,
+  name,
+  value,
+  icon: Icon,
+  onChange,
+  disabled = false,
+  type = "text",
+  copyValue,
+  countryCode,
+  onCountryCodeChange,
+  asSelect,
+  options = [],
+}) {
   const handleCopy = () => {
     if (copyValue) {
       navigator.clipboard.writeText(copyValue);
-      toast.success(`${label} copied!`);
+      toast.success(`${label} copied.`);
     }
   };
-  // Special case for gender dropdown
-  if (name === "gender") {
+
+  if (name === "gender" || asSelect) {
     return (
-      <div className="relative">
-        <label className="flex items-center gap-2 text-sm text-black mb-1">
+      <div>
+        <label className="flex items-center gap-2 text-sm font-medium text-[var(--bank-text)] mb-1.5">
           <Icon className="w-4 h-4" />
           {label}
         </label>
         <select
           name={name}
-          className="w-full px-4 py-2 rounded bg-blue-950 text-white border border-blue-700 placeholder-blue-300 disabled:opacity-50"
+          className="bank-input"
           value={value}
           onChange={onChange}
           disabled={disabled}
         >
-          <option value="">Select Gender</option>
-          <option value="Male">Male</option>
-          <option value="Female">Female</option>
-          <option value="Other">Other</option>
-          <option value="Prefer not to say">Prefer not to say</option>
+          {options.map((opt) => (
+            <option key={opt || "_empty"} value={opt}>
+              {opt || `Select ${label}`}
+            </option>
+          ))}
         </select>
       </div>
     );
   }
-  // Special case for phone with country code
+
   if (name === "phone") {
     return (
-      <div className="relative">
-        <label className="flex items-center gap-2 text-sm text-black mb-1">
+      <div>
+        <label className="flex items-center gap-2 text-sm font-medium text-[var(--bank-text)] mb-1.5">
           <Icon className="w-4 h-4" />
           {label}
         </label>
         <div className="flex gap-2">
           <select
-            className="px-2 py-2 rounded bg-blue-950 text-white border border-blue-700 disabled:opacity-50"
+            className="bank-input w-24"
             value={countryCode}
             onChange={onCountryCodeChange}
             disabled={disabled}
-            style={{ maxWidth: 100 }}
           >
-            <option value="+91">+91 (IN)</option>
-            <option value="+1">+1 (US)</option>
-            <option value="+44">+44 (UK)</option>
-            <option value="+61">+61 (AU)</option>
-            <option value="+81">+81 (JP)</option>
-            <option value="+971">+971 (UAE)</option>
-            {/* Add more as needed */}
+            <option value="+91">+91</option>
+            <option value="+1">+1</option>
+            <option value="+44">+44</option>
+            <option value="+61">+61</option>
+            <option value="+81">+81</option>
+            <option value="+971">+971</option>
           </select>
           <input
             type="tel"
             name={name}
-            className="w-full px-4 py-2 rounded bg-blue-950 text-white border border-blue-700 placeholder-blue-300 disabled:opacity-50"
-            placeholder={`Enter ${label}`}
+            className="bank-input flex-1"
+            placeholder={label}
             value={value}
             onChange={onChange}
             disabled={disabled}
@@ -362,14 +382,15 @@ function FormField({ label, name, value, icon: Icon, onChange, disabled = false,
       </div>
     );
   }
+
   return (
-    <div className="relative">
-      <label className="flex items-center gap-2 text-sm text-black mb-1">
+    <div>
+      <label className="flex items-center gap-2 text-sm font-medium text-[var(--bank-text)] mb-1.5">
         <Icon className="w-4 h-4" />
         {label}
         {copyValue && (
           <Copy
-            className="w-4 h-4 ml-1 cursor-pointer text-blue-600 hover:text-blue-800"
+            className="w-4 h-4 cursor-pointer text-[var(--bank-primary)] hover:opacity-80"
             onClick={handleCopy}
             title={`Copy ${label}`}
           />
@@ -378,7 +399,7 @@ function FormField({ label, name, value, icon: Icon, onChange, disabled = false,
       <input
         type={type}
         name={name}
-        className="w-full px-4 py-2 rounded bg-blue-950 text-white border border-blue-700 placeholder-blue-300 disabled:opacity-50"
+        className="bank-input"
         placeholder={`Enter ${label}`}
         value={value}
         onChange={onChange}

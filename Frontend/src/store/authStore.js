@@ -1,10 +1,7 @@
 import { create } from "zustand";
 import axios from "axios";
 
-const API_URL =
-  import.meta.env.MODE === "development"
-    ? "http://localhost:5000/api/auth"
-    : "/api/auth";
+const API_URL = "/api/auth";
 
 axios.defaults.withCredentials = true; // Enable sending cookies with requests
 
@@ -34,10 +31,17 @@ export const useAuthStore = create((set) => ({
         isLoading: false,
       });
     } catch (error) {
-      set({
-        error: error.response?.data?.message || "Sign Up failed",
-        isLoading: false,
-      });
+      let msg = error.response?.data?.message || error.response?.data?.error;
+      if (!msg) {
+        if (error.code === "ERR_NETWORK" || error.message?.includes("fetch") || error.message?.includes("Network")) {
+          msg = "Cannot connect to server. Make sure Backend is running (port 5000).";
+        } else if (error.response?.status === 500) {
+          msg = "Server error. Check Backend console for details.";
+        } else {
+          msg = error.message || "Sign Up failed";
+        }
+      }
+      set({ error: msg, isLoading: false });
       throw error;
     }
   },
@@ -86,7 +90,7 @@ export const useAuthStore = create((set) => ({
   },
 
   checkAuth: async () => {
-    set({ isCheckingAuth: true, isLoading: true, error: null });
+    set({ isCheckingAuth: true, error: null });
     try {
       const response = await axios.get(`${API_URL}/check-auth`);
       set({
@@ -95,7 +99,8 @@ export const useAuthStore = create((set) => ({
         isLoading: false,
         isCheckingAuth: false,
       });
-    } catch (error) {
+    } catch {
+      // 401 = not logged in - this is normal, not an error
       set({
         isAuthenticated: false,
         user: null,
@@ -131,12 +136,10 @@ export const useAuthStore = create((set) => ({
       const response = await axios.post(`${API_URL}/login`, {
         email,
         password,
-        context, // Pass the context
+        context: context || {},
         captcha,
       });
-      
-      // Check if 2FA is required
-      if (response.data.require2FA) {
+      if (response.data.requires2FA) {
         set({
           isLoading: false,
           error: null,
@@ -144,9 +147,8 @@ export const useAuthStore = create((set) => ({
           require2FA: true,
           twoFAEmail: response.data.email,
         });
-        return response.data; // Return the response for 2FA handling
+        return response.data;
       }
-      
       set({
         user: response.data.user,
         isAuthenticated: true,
@@ -154,12 +156,11 @@ export const useAuthStore = create((set) => ({
         error: null,
         require2FA: false,
       });
+      return response.data;
     } catch (error) {
-      set({
-        error: error.response?.data?.message || "Login failed",
-        isLoading: false,
-        require2FA: false,
-      });
+      const msg = error.response?.data?.message || error.response?.data?.error ||
+        (error.code === "ERR_NETWORK" ? "Cannot connect. Is Backend running?" : "Login failed");
+      set({ error: msg, isLoading: false, require2FA: false });
       throw error;
     }
   },

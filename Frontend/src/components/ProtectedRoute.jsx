@@ -5,11 +5,11 @@ import { Navigate } from "react-router-dom";
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, user } = useAuthStore();
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />;
   }
 
-  if (!user.isVerified) {
+  if (user.isVerified === false) {
     return <Navigate to="/verify-email" replace />;
   }
 

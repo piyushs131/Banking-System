@@ -58,8 +58,8 @@ const ContextLogTable = ({ logs }) => {
     >
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 bg-blue-100 rounded-lg">
-          <Activity className="w-6 h-6 text-blue-600" />
+        <div className="p-2 rounded-lg bg-[var(--bank-primary)]/10">
+          <Activity className="w-6 h-6 text-[var(--bank-primary)]" />
         </div>
         <div>
           <h2 className="text-xl font-bold text-gray-800">Contextual Login Logs</h2>
@@ -129,7 +129,7 @@ const ContextLogTable = ({ logs }) => {
                         {log.device && log.device.length > 40 && (
                           <button
                             onClick={() => toggleRowExpansion(log._id)}
-                            className="text-blue-600 hover:text-blue-800"
+                            className="text-[var(--bank-primary)] hover:underline"
                           >
                             <MoreHorizontal className="w-4 h-4" />
                           </button>
@@ -145,7 +145,7 @@ const ContextLogTable = ({ logs }) => {
                         {log.location?.locationName && log.location.locationName.length > 40 && (
                           <button
                             onClick={() => toggleRowExpansion(log._id)}
-                            className="text-blue-600 hover:text-blue-800"
+                            className="text-[var(--bank-primary)] hover:underline"
                           >
                             <MoreHorizontal className="w-4 h-4" />
                           </button>

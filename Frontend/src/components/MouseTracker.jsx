@@ -30,17 +30,16 @@ export default function MouseTracker() {
 
         try {
           const res = await axios.post(
-            "http://localhost:5001/analyze-mouse",
+            "/ml-api/analyze-mouse",
             dataToSend,
             {
               headers: { "Content-Type": "application/json" },
             }
           );
 
-          const { anomaly_score, is_anomaly } = res.data;
-          console.log("Anomaly Score:", anomaly_score);
-          if (is_anomaly) {
-            console.warn("⚠ Suspicious cursor behavior detected!");
+          const { is_anomaly } = res.data;
+          if (is_anomaly && import.meta.env.DEV) {
+            console.debug("Mouse anomaly flag (dev only)");
           }
         } catch (err) {
           console.error("Error analyzing mouse movement:", err);

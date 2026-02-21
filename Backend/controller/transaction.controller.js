@@ -69,21 +69,21 @@ export const getIncomingTransactions = async (req, res) => {
 export const getTransactionStats = async (req, res) => {
   try {
     const userId = req.userId;
-    
+
     // Get outgoing transactions
     const outgoingTransactions = await Transaction.find({ userId });
     const outgoingTotal = outgoingTransactions.reduce((sum, tx) => sum + tx.amount, 0);
     const outgoingCount = outgoingTransactions.length;
-    
+
     // Get incoming transactions
     const incomingTransactions = await Transaction.find({ recipientId: userId });
     const incomingTotal = incomingTransactions.reduce((sum, tx) => sum + tx.amount, 0);
     const incomingCount = incomingTransactions.length;
-    
+
     // Get recent transactions (last 30 days)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
+
     const recentOutgoing = await Transaction.find({
       userId,
       date: { $gte: thirtyDaysAgo }
@@ -92,7 +92,7 @@ export const getTransactionStats = async (req, res) => {
       recipientId: userId,
       date: { $gte: thirtyDaysAgo }
     });
-    
+
     const stats = {
       outgoing: {
         total: outgoingTotal,
@@ -108,7 +108,7 @@ export const getTransactionStats = async (req, res) => {
       },
       netFlow: incomingTotal - outgoingTotal
     };
-    
+
     res.status(200).json(stats);
   } catch (err) {
     console.error('Error fetching transaction stats:', err);
@@ -123,7 +123,7 @@ export const getUserBalance = async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    
+
     res.status(200).json({
       success: true,
       balance: user.balance,
@@ -178,14 +178,14 @@ export const createTransaction = async (req, res) => {
 
         // Risk-based transaction logic
         if (risk >= 10) {
-                  // Block transaction and send warning email for high risk
-        await sendSuspiciousTransactionAlert(
-          user.email,
-          user.name,
-          context,
-          risk,
-          { amount, recipient: recipientUser.name, accountNumber: recipientAccountNumber, purpose }
-        );
+          // Block transaction and send warning email for high risk
+          await sendSuspiciousTransactionAlert(
+            user.email,
+            user.name,
+            context,
+            risk,
+            { amount, recipient: recipientUser.name, accountNumber: recipientAccountNumber, purpose }
+          );
           return res.status(403).json({
             success: false,
             message: "Suspicious activity detected, transaction blocked for your security. Check your email for details.",
@@ -201,10 +201,10 @@ export const createTransaction = async (req, res) => {
               riskScore: risk
             });
           }
-          
+
           // Require additional verifm risk
           const verificationCode = generateVerificationCode();
-          
+
           // Store pending transaction and verification token
           user.transactionVerificationToken = verificationCode;
           user.transactionVerificationExpiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
@@ -245,11 +245,60 @@ export const createTransaction = async (req, res) => {
       }
     }
 
+    // === ML Fraud Detection (runs for all transactions) ===
+    let mlFraudDetected = false;
+    try {
+      mlFraudDetected = await detectFraud(amount, recipientUser._id, req.userId);
+    } catch (fraudErr) {
+      console.error("ML fraud detection error (continuing):", fraudErr.message);
+    }
+
+    if (mlFraudDetected) {
+      // Save blocked transaction for audit trail
+      const blockedTxn = new Transaction({
+        userId: req.userId,
+        amount,
+        recipient: recipientUser.name,
+        recipientId: recipientUser._id,
+        accountNumber: recipientAccountNumber,
+        ifsc: recipientUser.ifscCode,
+        purpose,
+        note,
+        date: new Date(),
+        status: "Failed – Fraud Detected (ML)",
+        txHash: null,
+        validated: false,
+        chainStatus: "OffChain",
+        blockchainLog: null,
+      });
+      await blockedTxn.save();
+
+      // Send fraud alert email
+      try {
+        const user = await User.findById(req.userId);
+        if (user) {
+          const ctx = context || { device: "Unknown", browser: "Unknown", ip: req.ip || "Unknown", location: { latitude: 0, longitude: 0 } };
+          await sendSuspiciousTransactionAlert(
+            user.email, user.name, ctx, 10,
+            { amount: amount.toString(), recipient: recipientUser.name, accountNumber: recipientAccountNumber, purpose }
+          );
+        }
+      } catch (emailErr) {
+        console.error("Failed to send fraud alert email:", emailErr.message);
+      }
+
+      return res.status(403).json({
+        success: false,
+        error: "Transaction blocked: Our AI fraud detection system identified this as a potentially fraudulent transaction. An alert has been sent to your email. If this was you, please contact support.",
+        fraudDetected: true
+      });
+    }
+
     // Check if contract is properly configured
     if (!contract?.methods?.createTransaction || typeof contract.methods.createTransaction !== 'function') {
       console.error("Blockchain contract not configured! ABI or address may be wrong.");
       // Fallback: Just save to MongoDB with "No Blockchain" status
-      
+
       // Update balances
       const balanceUpdated = await updateBalances(req.userId, recipientUser._id, amount);
       if (!balanceUpdated) {
@@ -267,7 +316,7 @@ export const createTransaction = async (req, res) => {
         note,
         date: new Date(),
         status: "Success (No Blockchain)",
-        txHash: null, // No blockchain tx hash
+        txHash: null,
         validated: false,
         chainStatus: "OffChain",
         blockchainLog: null,
@@ -305,11 +354,7 @@ export const createTransaction = async (req, res) => {
       return res.status(500).json({ error: "Blockchain transaction validation failed: " + err.message });
     }
 
-    // 7. Fraud detection using AI
-    const isFraud = await detectFraud(amount, recipientUser._id, req.userId);
-    if (isFraud) {
-      return res.status(400).json({ error: "Fraud detected" });
-    }
+    // 7. ML Fraud detection already done above — skip duplicate check
 
     // 8. Update balances
     const balanceUpdated = await updateBalances(req.userId, recipientUser._id, amount);
@@ -379,7 +424,7 @@ export const verifyTransaction = async (req, res) => {
 
     // Process the transaction
     const { amount, recipient, accountNumber, ifsc, purpose, note, useBlockchain } = pendingTransaction;
-    
+
     // Find recipient user by account number (in case it was stored differently)
     const recipientUser = await User.findOne({ accountNumber });
     if (!recipientUser) {
@@ -389,13 +434,13 @@ export const verifyTransaction = async (req, res) => {
     // Check if contract is properly configured
     if (!contract?.methods?.createTransaction || typeof contract.methods.createTransaction !== 'function') {
       console.error("Blockchain contract not configured! ABI or address may be wrong.");
-      
+
       // Update balances
       const balanceUpdated = await updateBalances(req.userId, recipientUser._id, amount);
       if (!balanceUpdated) {
         return res.status(500).json({ error: 'Failed to update balances' });
       }
-      
+
       // Fallback: Just save to MongoDB with "No Blockchain" status
       const newTransaction = new Transaction({
         userId: req.userId,
@@ -475,7 +520,7 @@ export const verifyTransaction = async (req, res) => {
       if (!balanceUpdated) {
         return res.status(500).json({ error: 'Failed to update balances' });
       }
-      
+
       // Save to MongoDB only
       const newTransaction = new Transaction({
         userId: req.userId,

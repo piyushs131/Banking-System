@@ -1,13 +1,12 @@
 import { useEffect } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { useAuthStore } from "./store/authStore";
 import ServicePage from "./pages/ServicePage";
 import TransactionHistoryPage from "./pages/TransactionHistoryPage";
+import LoginActivityPage from "./pages/LoginActivityPage";
 import {
-  FloatingShape,
   LoadingSpinner,
-  MouseTracker,
   ProtectedRoute,
   RedirectAuthenticatedUser,
   Navbar,
@@ -26,7 +25,11 @@ import {
 } from "./pages";
 
 function App() {
-  const { isCheckingAuth, checkAuth } = useAuthStore();
+  const { isCheckingAuth, checkAuth, isAuthenticated } = useAuthStore();
+  const location = useLocation();
+  const isAuthRoute = ["/login", "/signup", "/forget-password", "/verify-email", "/verify-2fa"].some(
+    (p) => location.pathname.startsWith(p) || location.pathname.startsWith("/reset-password")
+  );
 
   useEffect(() => {
     checkAuth();
@@ -34,39 +37,24 @@ function App() {
 
   if (isCheckingAuth) return <LoadingSpinner />;
 
+  const pageClass = isAuthRoute || !isAuthenticated
+    ? "bank-page-auth min-h-screen w-full"
+    : "bank-page-app min-h-screen w-full";
+
   return (
-    <main
-      className="min-h-screen w-full flex items-center justify-center relative overflow-hidden
-      bg-gradient-to-br from-blue-800 to-violet-900 text-white"
-    >
-      <Navbar />
-      <FloatingShape
-        color={"bg-blue-500"}
-        size={"w-64 h-64"}
-        top={"-5%"}
-        left={"10%"}
-        delay={0}
-      />
-      <FloatingShape
-        color={"bg-purple-500"}
-        size={"w-48 h-48"}
-        top={"70%"}
-        left={"80%"}
-        delay={5}
-      />
-      <FloatingShape
-        color={"bg-violet-500"}
-        size={"w-32 h-32"}
-        top={"40%"}
-        left={"-10%"}
-        delay={2}
-      />
-
-      <MouseTracker />
-
+    <main className={pageClass}>
+      {isAuthenticated && <Navbar />}
       <Routes>
         <Route
           path="/"
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard"
           element={
             <ProtectedRoute>
               <DashboardPage />
@@ -113,12 +101,7 @@ function App() {
             </RedirectAuthenticatedUser>
           }
         />
-        <Route
-          path="/reset-password/:token"
-          element={
-              <ResetPasswordPage />
-          }
-        />
+        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
         <Route
           path="/profile"
           element={
@@ -127,8 +110,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
-        <Route path="*" element={<Navigate to="/" replace />} />
         <Route
           path="/transactions"
           element={
@@ -161,9 +142,23 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/login-activity"
+          element={
+            <ProtectedRoute>
+              <LoginActivityPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-
-      <Toaster />
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: { background: "var(--bank-bg-elevated)", color: "var(--bank-text)", border: "1px solid var(--bank-border)" },
+        }}
+      />
     </main>
   );
 }

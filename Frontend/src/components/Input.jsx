@@ -1,42 +1,37 @@
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 
-const Input = ({ icon: Icon, type = "text", label, ...props }) => {
+const Input = ({ icon: Icon, type = "text", label, className = "", ...props }) => {
   const [showPassword, setShowPassword] = useState(false);
   const isPassword = type === "password";
 
-  const toggleShowPassword = () => setShowPassword((prev) => !prev);
-
   return (
-    <div className="relative mb-6">
+    <div className="mb-5">
       {label && (
-        <label className="block mb-1 text-sm font-medium text-gray-700">{label}</label>
+        <label className="block mb-1.5 text-sm font-medium text-[var(--bank-text)]">{label}</label>
       )}
-      {/* Left Icon */}
-      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-        <Icon className="size-5 text-violet-500" />
+      <div className="relative">
+        {Icon && (
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--bank-text-subtle)]">
+            <Icon className="w-5 h-5" />
+          </div>
+        )}
+        <input
+          {...props}
+          type={isPassword && showPassword ? "text" : type}
+          className={`bank-input ${Icon ? "pl-10" : ""} ${isPassword ? "pr-10" : ""} ${className}`}
+        />
+        {isPassword && (
+          <button
+            type="button"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--bank-text-subtle)] hover:text-[var(--bank-text)]"
+            onClick={() => setShowPassword((p) => !p)}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+          >
+            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+          </button>
+        )}
       </div>
-
-      {/* Input Field */}
-      <input
-        {...props}
-        type={isPassword && showPassword ? "text" : type}
-        className="w-full pl-10 pr-10 py-2 bg-gray-800 bg-opacity-50 rounded-lg border border-gray-700 focus:border-violet-500 focus:ring-violet-500 text-white placeholder-gray-400 transition duration-200"
-      />
-
-      {/* Right Eye Icon (Only for Password Fields) */}
-      {isPassword && (
-        <div
-          className="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer"
-          onClick={toggleShowPassword}
-        >
-          {showPassword ? (
-            <EyeOff className="size-5 text-gray-400" />
-          ) : (
-            <Eye className="size-5 text-gray-400" />
-          )}
-        </div>
-      )}
     </div>
   );
 };
